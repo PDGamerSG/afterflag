@@ -1,0 +1,22 @@
+{
+  "name": "afterflag",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Prove that queued work can survive a Flagsmith codec rollout before removing its decoder.",
+  "engines": { "node": ">=22.13" },
+  "scripts": {
+    "test": "node --test",
+    "demo": "node scripts/demo.mjs",
+    "site": "node scripts/site.mjs",
+    "view": "node scripts/serve.mjs"
+  },
+  "exports": {
+    "./ledger": "./src/ledger.mjs",
+    "./worker": "./src/worker.mjs",
+    "./retirement": "./src/retirement.mjs",
+    "./flagsmith": "./src/flagsmith.mjs",
+    "./rehearsal": "./src/rehearsal.mjs"
+  },
+  "license": "MIT"
+}

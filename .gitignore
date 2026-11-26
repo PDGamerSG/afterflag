@@ -1,0 +1,8 @@
+node_modules/
+build/
+artifacts/
+site/
+.env
+.env.*
+*.sqlite*
+.DS_Store
