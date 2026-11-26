@@ -34,10 +34,29 @@ export async function startLab({ databaseOnly = false } = {}) {
       return bind;
     };
     const db = await port('queue-db', 5432);
+    let flagsmith;
+    if (!databaseOnly) {
+      flagsmith = 'http://' + await port('flagsmith', 8000);
+      const deadline = Date.now() + 120000;
+      let ready = false;
+      while (Date.now() < deadline) {
+        try {
+          const response = await fetch(flagsmith + '/health/liveness/', {
+            signal: AbortSignal.timeout(2000)
+          });
+          if (response.ok) {
+            ready = true;
+            break;
+          }
+        } catch {}
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+      }
+      if (!ready) throw new Error('The isolated Flagsmith API did not become healthy.');
+    }
     return {
       project, close,
       db: 'postgresql://afterflag:' + queuePassword + '@' + db + '/afterflag',
-      flagsmith: databaseOnly ? undefined : 'http://' + await port('flagsmith', 8000)
+      flagsmith
     };
   } catch (error) {
     await close().catch(() => {});

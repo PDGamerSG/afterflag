@@ -45,16 +45,14 @@ export async function bootstrapFlagsmith(baseUrl) {
     const addFlag = (name, initial) => create(projectPath + '/features/', {
       type: 'STANDARD', name, initial_value: initial, default_enabled: false
     });
-    const [codec, hold, segment, provider] = await Promise.all([
-      addFlag(codecFlag, manifest.codecs.old),
-      addFlag(holdFlag, null),
-      create(projectPath + '/segments/', {
-        name: 'Pilot', project: project.id, rules: [{
-          type: 'ALL', rules: [], conditions: [{ operator: 'EQUAL', property: 'ring', value: 'pilot' }]
-        }]
-      }),
-      create(projectPath + '/feature-health/providers/', { name: 'Webhook' })
-    ]);
+    const codec = await addFlag(codecFlag, manifest.codecs.old);
+    const hold = await addFlag(holdFlag, null);
+    const segment = await create(projectPath + '/segments/', {
+      name: 'Pilot', project: project.id, rules: [{
+        type: 'ALL', rules: [], conditions: [{ operator: 'EQUAL', property: 'ring', value: 'pilot' }]
+      }]
+    });
+    const provider = await create(projectPath + '/feature-health/providers/', { name: 'Webhook' });
     const webhookPath = new URL(provider.webhook_url).pathname;
     if (!webhookPath.startsWith('/api/')) throw new Error('Flagsmith returned an invalid Feature Health route.');
     const observedHealthIds = new Set();
