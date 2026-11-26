@@ -1,9 +1,19 @@
+async function holdReason(readHold) {
+  try {
+    const decision = await readHold();
+    if (decision?.enabled === false) return null;
+    return decision?.enabled === true ? 'flag-enabled' : 'flag-unobserved';
+  } catch {
+    return 'provider-unavailable';
+  }
+}
+
 export async function runWorker({
   ledger,
   jobId,
   decoders,
   readHold,
-  now = Date.now(),
+  now,
   effectType = 'export'
 }) {
   const claim = ledger.claim(jobId, now);
@@ -11,47 +21,24 @@ export async function runWorker({
     return claim;
   }
   if (claim.status !== 'claimed') return { status: 'unavailable', reason: claim.status };
+  const { token, job } = claim;
+  const releaseWith = (result) => {
+    ledger.release(jobId, token, now);
+    return result;
+  };
 
-  let decision;
-  try {
-    decision = await readHold();
-  } catch {
-    ledger.release(jobId);
-    return { status: 'held', reason: 'provider-unavailable' };
-  }
-  if (!decision || decision.enabled !== false) {
-    ledger.release(jobId);
-    return {
-      status: 'held',
-      reason: decision?.enabled === true ? 'flag-enabled' : 'flag-unobserved'
-    };
-  }
+  const held = await holdReason(readHold);
+  if (held) return releaseWith({ status: 'held', reason: held });
 
-  const decoder = decoders?.[claim.job.codec];
-  if (!decoder) {
-    ledger.release(jobId);
-    return { status: 'unsupported-codec', codec: claim.job.codec };
-  }
+  const decoder = decoders?.[job.codec];
+  if (!decoder) return releaseWith({ status: 'unsupported-codec', codec: job.codec });
   try {
-    const effect = decoder(claim.job.bytes);
-    let latestDecision;
-    try {
-      latestDecision = await readHold();
-    } catch {
-      ledger.release(jobId);
-      return { status: 'held', reason: 'provider-unavailable' };
-    }
-    if (!latestDecision || latestDecision.enabled !== false) {
-      ledger.release(jobId);
-      return {
-        status: 'held',
-        reason: latestDecision?.enabled === true ? 'flag-enabled' : 'flag-unobserved'
-      };
-    }
-    const result = ledger.commit(jobId, effectType, now);
-    return { ...result, jobId, codec: claim.job.codec, effect };
+    const effect = decoder(job.bytes);
+    const latestHold = await holdReason(readHold);
+    if (latestHold) return releaseWith({ status: 'held', reason: latestHold });
+    const result = ledger.commit(jobId, effectType, { token, artifact: effect, now });
+    return result.status === 'committed' ? { ...result, jobId, codec: job.codec, effect } : result;
   } catch (error) {
-    ledger.release(jobId);
-    return { status: 'decode-failed', codec: claim.job.codec, reason: error.message };
+    return releaseWith({ status: 'decode-failed', codec: job.codec, reason: error.message });
   }
 }

@@ -1,0 +1,20 @@
+name: Afterflag release proof
+description: Check whether a candidate worker can retire a codec using disposable Flagsmith and PostgreSQL.
+inputs:
+  manifest:
+    description: Manifest path relative to the checked-out consumer repository.
+    required: true
+  report:
+    description: Report path relative to the checked-out consumer repository.
+    default: artifacts/afterflag-release.json
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      env:
+        TOOL_ROOT: ${{ github.action_path }}/../../..
+        PROOF_MANIFEST: ${{ inputs.manifest }}
+        PROOF_REPORT: ${{ inputs.report }}
+      run: |
+        npm ci --prefix "$TOOL_ROOT" --ignore-scripts --no-audit --no-fund
+        node "$TOOL_ROOT/scripts/afterflag.mjs" run --manifest "$PROOF_MANIFEST" --report "$PROOF_REPORT"

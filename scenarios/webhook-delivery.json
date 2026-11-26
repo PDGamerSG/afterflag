@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "id": "webhook-delivery",
+  "title": "Webhook delivery intents",
+  "flags": { "codec": "afterflag_delivery_json", "hold": "afterflag_delivery_hold" },
+  "codecs": { "old": "delimited", "new": "json" },
+  "artifacts": {
+    "producer": "delivery/producer.mjs",
+    "bridge": "delivery/bridge.mjs",
+    "candidate": "delivery/candidate.mjs"
+  },
+  "specimens": {
+    "retained": {
+      "id": "delivery-041", "delayMs": 120000,
+      "payload": { "destination": "studio-demo", "event": "invoice.ready" },
+      "expectedArtifact": "studio-demo:invoice.ready"
+    },
+    "replacement": {
+      "id": "delivery-042",
+      "payload": { "destination": "studio-demo", "event": "invoice.updated" },
+      "expectedArtifact": "studio-demo:invoice.updated"
+    }
+  },
+  "replay": ["pending", "held", "retry", "claimed", "dead"]
+}

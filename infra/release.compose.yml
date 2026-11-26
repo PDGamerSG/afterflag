@@ -1,0 +1,53 @@
+x-flagsmith-image: &flagsmith-image docker.flagsmith.com/flagsmith/flagsmith:2.295.2@sha256:48905c664152d8ae2c843ec9cee72ff197e7caff6e91b959bb851a235915ea35
+x-db-image: &db-image postgres:17-alpine@sha256:f9cf3e1f0066f0eb0c48707d864f0ac5941e9ff454a072077d97a4d278d07d73
+x-flagsmith-env: &flagsmith-env
+  DATABASE_URL: postgresql://flagsmith:${AF_LAB_PASSWORD:?}@flags-db:5432/flagsmith
+  ENVIRONMENT: production
+  DJANGO_ALLOWED_HOSTS: '127.0.0.1,localhost'
+  FLAGSMITH_DOMAIN: '127.0.0.1'
+  DJANGO_SECRET_KEY: ${AF_LAB_SERVER_SECRET:?}
+  TASK_RUN_METHOD: SYNCHRONOUSLY
+  CACHE_FLAGS_SECONDS: '0'
+  GET_FLAGS_ENDPOINT_CACHE_SECONDS: '0'
+  ENVIRONMENT_CACHE_SECONDS: '0'
+services:
+  flags-db:
+    image: *db-image
+    environment:
+      POSTGRES_USER: flagsmith
+      POSTGRES_PASSWORD: ${AF_LAB_PASSWORD:?}
+      POSTGRES_DB: flagsmith
+    healthcheck:
+      test: [CMD, pg_isready, -U, flagsmith, -d, flagsmith]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+  queue-db:
+    image: *db-image
+    environment:
+      POSTGRES_USER: afterflag
+      POSTGRES_PASSWORD: ${AF_QUEUE_PASSWORD:?}
+      POSTGRES_DB: afterflag
+    ports: ['127.0.0.1::5432']
+    healthcheck:
+      test: [CMD, pg_isready, -U, afterflag, -d, afterflag]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+  migrate:
+    image: *flagsmith-image
+    command: [migrate]
+    environment: *flagsmith-env
+    healthcheck:
+      disable: true
+    depends_on:
+      flags-db:
+        condition: service_healthy
+  flagsmith:
+    image: *flagsmith-image
+    command: [serve]
+    environment: *flagsmith-env
+    ports: ['127.0.0.1::8000']
+    depends_on:
+      migrate:
+        condition: service_completed_successfully

@@ -39,3 +39,17 @@ Producer codec selection is captured in the job. The separate hold flag is read 
 3. Fence new V1 admissions, reject a captured pre-rollout decision, honor live hold and drain the original message after a worker restart.
 4. Exercise the actual V2-only registry, V1 redelivery and one exported receipt per job. Gate retirement on the candidate checks and an atomic ledger check.
 5. Reproduce the run from a clean checkout in GitHub Actions and publish its report in a static viewer. Keep credentials in the disposable lab.
+
+## Second discovery and architecture pass
+
+On November 27, Astra reviewed the published v0.1 commit `c487bc8` and independently rated its working walkthrough **8.70/10**. The demo score covered the walkthrough. The required submission video was still unavailable. The old demo queued its V1 witness after promotion, used the bridge for its terminal check, failed on a repeated default run, and displayed fixture results as live on the public viewer. These findings supersede the original completion assessment.
+
+| Criterion | Astra’s v0.1 review | Astra’s v0.2 design projection |
+| --- | ---: | ---: |
+| Flagsmith | 9.30 | 9.60 |
+| Impact | 8.60 | 9.30 |
+| Creativity | 8.40 | 9.20 |
+| Demo | 8.50 | 9.40 |
+| **Mean** | **8.70** | **9.375** |
+
+The revised architecture uses a real PostgreSQL queue and separate worker processes, manifests and semantic output checks, an offline evidence verifier, and native Feature Health read-back. The projected rating qualified this architecture for implementation. A fresh earned rating must use the working build and recorded demonstration. [Second-round research](research-iteration.md) · [Architecture](superpowers/specs/2026-11-27-release-proof.md)

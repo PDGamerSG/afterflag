@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <meta name="description" content="Inspect the Flagsmith decisions, queue state, and worker outcomes behind an Afterflag decoder retirement verdict.">
+  <link rel="icon" type="image/png" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABP0lEQVR42mNgGGwgviygAIjPA/F/KmOQmQX4LBYAKYop8v3vEWX739rT6L+FqwFVMMgskJkgs6EOEcDmgPOhWR7/9Sw1/mubqtIEg8wG2QGyCyPYQa6jpeXIjoCGRAGK70FBRGvLYRhkF0oogBIJKJ6oYbhnhAUY41MDsgtkJ4oDQImFUstjCtz+n/zYC8b4HAGyi+oOAFm4/2nbwDjA1FHn/+pzVXDLqyZH4lVPdQfM2JYDtxzEJqSeaAeAgjEoxR4vbpmfALccFAqg0KCKA0CWwwwmBoPin1Dqp6kDQDmA2CijahSAMLE+p2k2HLQOwFYy0s0BuEpGujgAX8lIcwcQKhlp7gBCJSPZDqBWyUiWA6hZMtLFAfhKRppGATElI1YHUKtJRgzG1iQb8EbpwDbLB7xjMii6ZgPeOR0oAAA4gyMlitLPOQAAAABJRU5ErkJggg==">
+  <title>Afterflag · Release evidence</title>
+  <style>%%STYLE%%</style>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to evidence</a>
+  <header class="topbar">
+    <div class="shell topbar-inner">
+      <div class="identity">
+        <a class="brand" href="./"><span class="brand-mark" aria-hidden="true"></span>Afterflag</a>
+        <span class="brand-context">Release evidence</span>
+      </div>
+      <nav aria-label="Evidence explorer">
+        <a class="nav-code" href="https://github.com/PDGamerSG/afterflag">Source code <span class="external-icon" aria-hidden="true"></span></a>
+        <a class="download" href="./report.json" download="afterflag-report.json"><span class="download-icon" aria-hidden="true"></span>Download JSON</a>
+      </nav>
+    </div>
+  </header>
+  <main id="main" class="shell">
+    <section class="hero" aria-labelledby="title">
+      <div class="hero-content">
+        <h1 id="title">Can the old decoder <em>retire?</em></h1>
+        <p>Flagsmith can move new work to a new codec. Queued jobs can still need the old decoder.</p>
+        %%CONTEXT%%
+      </div>
+      %%VERDICT%%
+    </section>
+    <section class="chart panel" aria-labelledby="chart-title">
+      <div class="chart-header">
+        <div>
+          <h2 id="chart-title">Release timeline</h2>
+          <p>Flagsmith policy and the latest observed retirement gate result.</p>
+        </div>
+        <p class="chart-order">Event order<span aria-hidden="true" class="arrow arrow-right"></span></p>
+      </div>
+      %%CHART%%
+    </section>
+    <section class="section" id="evidence" aria-labelledby="evidence-title">
+      <div class="section-header">
+        <h2 id="evidence-title">Evidence log</h2>
+        %%EVENT_COUNT%%
+      </div>
+      %%EVIDENCE%%
+    </section>
+    <div class="report-sections">
+      <section class="section" id="checks" aria-labelledby="checks-title">
+        <div class="section-header"><h2 id="checks-title">Release checks</h2></div>
+        %%CHECKS%%
+      </section>
+      <section class="section" id="provenance" aria-labelledby="provenance-title">
+        <div class="section-header"><h2 id="provenance-title">Run provenance</h2></div>
+        %%PROVENANCE%%
+      </section>
+    </div>
+  </main>
+  <footer class="shell footer">
+    <span>Afterflag · Decoder retirement evidence</span>
+    <a href="https://github.com/PDGamerSG/afterflag">GitHub <span class="external-icon" aria-hidden="true"></span></a>
+  </footer>
+  <script>%%SCRIPT%%</script>
+</body>
+</html>
