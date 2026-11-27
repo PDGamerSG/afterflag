@@ -46,7 +46,13 @@ export async function deliver({ queue, decoders, build, id, now, readHold }) {
   if (hold?.enabled !== false) return defer('held', hold?.enabled === true ? 'hold-enabled' : 'invalid-hold', 'held', hold);
 
   const committed = await queue.complete(job.id, claim.token, artifact, now);
-  if (committed.status === 'artifact-mismatch') return defer('retry', 'artifact-mismatch', 'artifact-mismatch', hold);
+  if (committed.status === 'artifact-mismatch') {
+    return {
+      ...await defer('retry', 'artifact-mismatch', 'artifact-mismatch', hold),
+      artifactDigestObserved: committed.artifactDigestObserved,
+      expectedArtifactDigest: committed.expectedArtifactDigest
+    };
+  }
   return { ...result, ...committed, hold };
 }
 

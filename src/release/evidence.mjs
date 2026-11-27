@@ -121,11 +121,12 @@ export function evaluate(report) {
       sameReceipt(result.worker.receipt, result.receipt) &&
       result.receipt.artifactDigest === m.specimens?.replacement?.artifactDigest);
   add('redelivery', 'The candidate returns the original receipt on old redelivery',
-    ['candidate', 'redelivery'], (_, result) =>
+    ['candidate', 'redelivery'], (replacementDelivery, result) =>
       candidateBuild(result.worker) && result.worker.status === 'duplicate' &&
       observedJob(result.worker, legacy) &&
       sameReceipt(result.worker.receipt, drained?.receipt) &&
-      sameReceipt(result.receipt, drained?.receipt) && result.effects === 2);
+      sameReceipt(result.receipt, drained?.receipt) &&
+      result.effects === (replacementDelivery.worker?.status === 'committed' ? 2 : 1));
   add('retirement', 'The durable fence and zero outstanding old jobs authorize removal',
     ['redelivery', 'retired'], (_, result) =>
       result.status === 'ready' && result.snapshot?.codec === old && result.snapshot.admission === 'retired' &&

@@ -3,7 +3,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import test from 'node:test';
 import { bootstrapFlagsmith } from '../../src/release/policy.mjs';
-import { loadManifest } from '../../src/release/manifest.mjs';
+import { loadManifest, sha256 } from '../../src/release/manifest.mjs';
 import { rehearse } from '../../src/release/rehearse.mjs';
 import { createEvidence, evaluate, verifyEvidence } from '../../src/release/evidence.mjs';
 
@@ -11,7 +11,7 @@ const databaseUrl = process.env.AFTERFLAG_TEST_DB;
 const flagsmithUrl = process.env.AFTERFLAG_TEST_FLAGSMITH;
 const live = Boolean(databaseUrl && flagsmithUrl);
 
-test('real Flagsmith and PostgreSQL produce a ready proof, blocked proof and alternate contract', { skip: !live }, async () => {
+test('real Flagsmith and PostgreSQL prove two contracts and detect a delivery regression', { skip: !live }, async () => {
   const provision = await bootstrapFlagsmith(flagsmithUrl);
   const contracts = [
     { name: 'document-export', verdict: 'ready', output: 'release-report.json' },
@@ -54,4 +54,25 @@ test('real Flagsmith and PostgreSQL produce a ready proof, blocked proof and alt
       assert.throws(() => verifyEvidence(report), /Evidence chain mismatch/);
     }
   }
+
+  const regression = await loadManifest('scenarios/webhook-delivery.json');
+  const original = Buffer.from(regression.artifacts.candidate.source, 'base64').toString('utf8');
+  const altered = original.replace("return subscriber + ':' + event.type;", "return 'default:' + event.type;");
+  assert.notEqual(altered, original);
+  regression.artifacts.candidate = {
+    source: Buffer.from(altered).toString('base64'),
+    digest: sha256(altered)
+  };
+  const outcome = await rehearse({
+    plan: regression, databaseUrl, policy: await provision(regression.manifest), source: process.env.AFTERFLAG_SOURCE
+  });
+  const verified = verifyEvidence(outcome, { requireLive: true, manifest: regression.digest });
+  assert.equal(verified.status, 'blocked');
+  assert.deepEqual(verified.checks.filter((item) => item.status === 'fail').map(({ id }) => id), ['candidate']);
+  assert.equal(verified.checks.find((item) => item.id === 'redelivery').status, 'pass');
+  const failedDelivery = outcome.events.find((event) => event.kind === 'candidate').data.worker;
+  assert.equal(failedDelivery.status, 'artifact-mismatch');
+  assert.equal(failedDelivery.artifactDigestObserved, sha256('default:invoice.updated'));
+  assert.equal(failedDelivery.expectedArtifactDigest, outcome.metadata.specimens.replacement.artifactDigest);
+  assert.ok(!outcome.events.some((event) => ['retired', 'health-ready'].includes(event.kind)));
 });

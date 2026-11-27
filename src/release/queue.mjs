@@ -275,7 +275,12 @@ export function openQueue(connectionString, scope, { connections = 12 } = {}) {
         const row = await lockLease(client, id);
         const now = await timeAt(client, requestedNow);
         if (!ownsLease(row, token, now)) return { status: 'lease-lost', id };
-        if (row.expected_digest !== artifactDigest) return { status: 'artifact-mismatch', id };
+        if (row.expected_digest !== artifactDigest) {
+          return {
+            status: 'artifact-mismatch', id,
+            artifactDigestObserved: artifactDigest, expectedArtifactDigest: row.expected_digest
+          };
+        }
         const receiptId = digest(JSON.stringify([scope, id, artifactDigest]));
         await client.query(`
           INSERT INTO afterflag_effects (scope, job_id, artifact, artifact_digest, receipt, committed_at)
