@@ -13,4 +13,4 @@
 - [x] Load a checked-in manifest in src/release/manifest.mjs. Execute distinct standalone runtime modules in scripts/release-worker.mjs. Run the same candidate artifact before and after the bridge drains.
 - [x] Record and verify a versioned causal trace using src/release/evidence.mjs and src/release/rehearse.mjs. Cover errors, incomplete reports and early blockers.
 - [x] Expose the CLI, a real CI workflow, workload benchmark and two reuse contracts. Derive the static viewer from verified reports. Capture the actual run video.
-- [ ] Request a fresh Astra review of the delivered work. Revisit any failing criterion or incorrect evidence and rerun before publication.
+- [x] Request a fresh Astra review of the delivered work. Revisit any failing criterion or incorrect evidence and rerun before publication. [Final score](../../review.md#final-earned-review)

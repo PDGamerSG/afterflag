@@ -4,7 +4,7 @@
 
 An empty ready queue can conceal delayed, held, retryable, claimed, or dead-letter work. Afterflag runs the actual candidate worker against retained bytes, verifies a version-specific producer fence and drain, and records the resulting release decision in Flagsmith.
 
-[Document export proof](https://pdgamersg.github.io/afterflag/) · [Blocked release](https://pdgamersg.github.io/afterflag/blocked/) · [Webhook contract](https://pdgamersg.github.io/afterflag/webhook/) · [Contract guide](docs/contracts.md)
+[Document export proof](https://pdgamersg.github.io/afterflag/) · [Blocked release](https://pdgamersg.github.io/afterflag/blocked/) · [Webhook contract](https://pdgamersg.github.io/afterflag/webhook/) · [1:57 demo](https://github.com/PDGamerSG/afterflag/releases/download/v0.2.0/afterflag-demo.mp4) · [Contract guide](docs/contracts.md)
 
 ## Run it
 

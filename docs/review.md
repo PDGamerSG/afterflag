@@ -63,3 +63,17 @@ The follow-up samples the database clock after acquiring the row lock and checks
 ## First recorded cut
 
 Astra scored commit `30c89d9` and the first recording **8.875/10**. It gave 9.5 for Flagsmith, 8.5 for impact, 9.0 for creativity and 8.5 for the video. It independently verified the four report verdicts and observed the PostgreSQL lock-wait tests pass. The requested improvements were a larger opening counterexample and a direct view of the matching Feature Health event in Flagsmith. The practice run uses synthetic workloads and the record contains no downstream production adoption. [Reviewed code](https://github.com/PDGamerSG/afterflag/tree/30c89d9)
+
+## Final earned review
+
+Independent GPT‑6.2 Astra review of functional commit `81ec5f3` and the 117.2-second recording reached **9.25/10** on November 27, 2026. [Reviewed code](https://github.com/PDGamerSG/afterflag/tree/81ec5f3) · [Organizer rubric](https://www.wemakedevs.org/hackathons/flagsmith#judging)
+
+| Organizer criterion | Score | What Astra verified |
+| --- | ---: | --- |
+| Use of Flagsmith | 9.5 | Stable and pilot decisions select the stored codec. A separate live hold and native Health tab show the blocked incident and its clearance. |
+| Impact | 9.0 | The separate webhook consumer checkout passed. Intentionally routing its replacement job to a different destination failed the artifact check while preserving the original receipt and withholding retirement. |
+| Creativity | 9.5 | The same candidate build rejects the retained V1 bytes and later commits the expected V2 artifact. |
+| Demo video | 9.0 | The opening counterexample remained clear at 360 px. Astra matched both native Flagsmith events to the report and examined the actual captions, frames and audio. |
+| **Equal-weight mean** | **9.25** | Clears the requested 9.0 threshold. |
+
+Astra independently reran the offline verifier for the three release proofs and both consumer outcomes. The local live suite ran 38 tests with no failures. The film captures the core workflow at `13679de`. The shipped-code proofs use `81ec5f3`, which adds precise diagnostics for a semantic output mismatch. The benchmark covers a single PostgreSQL host and a transactional effect table. The dense incident details benefit from a larger screen. [Demo and its evidence](https://github.com/PDGamerSG/afterflag/releases/tag/v0.2.0)

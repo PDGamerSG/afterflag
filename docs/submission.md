@@ -32,6 +32,7 @@ Transient identity evaluations made the pilot easy to test without storing custo
 
 - [Public repository](https://github.com/PDGamerSG/afterflag)
 - [Evidence viewer](https://pdgamersg.github.io/afterflag/)
+- [1:57 demo MP4 and evidence](https://github.com/PDGamerSG/afterflag/releases/tag/v0.2.0)
 - [Organizer submission form](https://www.wemakedevs.org/hackathons/flagsmith/submit)
 
-The form requires a public or unlisted **YouTube or Loom link under three minutes** and a public repository with setup details. Submit by **November 29, 2026 at 8:00 p.m. IST**. [Submission schema](https://wemakedevs-server.onrender.com/hackathons/flagsmith) · [Rules](https://www.wemakedevs.org/hackathons/flagsmith/rules)
+The form requires a public or unlisted **YouTube or Loom link under three minutes** and a public repository with setup details. Add the hosted video URL and complete the entrant attestations by **November 29, 2026 at 8:00 p.m. IST**. [Submission schema](https://wemakedevs-server.onrender.com/hackathons/flagsmith) · [Rules](https://www.wemakedevs.org/hackathons/flagsmith/rules)

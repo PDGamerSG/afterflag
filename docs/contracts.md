@@ -27,7 +27,7 @@ Use a Node 22 runner with Docker Compose and a checked-out trusted consumer repo
 - uses: actions/setup-node@v4
   with:
     node-version: 22
-- uses: PDGamerSG/afterflag/.github/actions/release-proof@30c89d963059de6af13e5dbe2d5e3bfc4155933c
+- uses: PDGamerSG/afterflag/.github/actions/release-proof@81ec5f340d41a91347cdf94ac7227f0069af3ab0
   with:
     manifest: release/document-export.json
     report: artifacts/release-report.json
@@ -39,6 +39,8 @@ Use a Node 22 runner with Docker Compose and a checked-out trusted consumer repo
 ~~~
 
 The action preserves the verifier exit code. It needs no production Flagsmith, database, or AWS credentials.
+
+The webhook action passed in a separate checkout. Changing the candidate decoder to emit a different destination produced exit 1, a single failed replacement check, and different observed and expected artifact digests. The old receipt replay continued to pass, and retirement stayed blocked. The live test suite exercises the same regression.
 
 ## Evidence and trust
 

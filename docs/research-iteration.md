@@ -33,6 +33,12 @@ Queries provide overlapping candidate sets. The counts are index snapshots. [Eve
 
 No exact public match for the scoped release check appeared in these sources. Serializer expansion, fencing, work drainage and replay have established precedents.
 
+## New entries checked before release
+
+Turnout is a Track 03 entry that changes a real self-hosted Flagsmith experiment, uses Feature Health, and lets an old HTTP experiment split drain. Its decision is based on visitor metrics. Flag Janitor tests a stale-flag branch removal and checks Flagsmith overrides before post-merge archival. Both are close to part of the workflow. Afterflag’s comparison uses codec bytes persisted before the cutover and a receipt from the same effect ledger. [Turnout](https://github.com/tharunkumardeveloper/turnout/blob/main/README.md#why-this-exists-track-03) · [Flag Janitor](https://github.com/mohammedsharukhh/flag-janitor/blob/main/README.md)
+
+A November 27 GitHub refresh found Afterflag as the only repository result for `"toggle wars" codec in:readme is:public` and for `flagsmith codec in:readme is:public created:>=2026-11-24`. The wider Flagsmith queue search produced 41 results. The event API still reported `projects_published=false`, and the organizer’s projects route returned 404. These results bound what was visible at the time of review. [Event codec query](https://github.com/search?q=%22toggle+wars%22+codec+in%3Areadme+is%3Apublic&type=repositories) · [Event API](https://wemakedevs-server.onrender.com/hackathons/flagsmith)
+
 ## What past judging rewarded
 
 The closest verified Flagsmith award went to Insidious for running real feature changes during a self-hosted operational drill. Roloe and CapyKube reported sponsor-linked performance improvements and DebugProof tested the same failure on two releases. Public award records show that both solo developers and teams win. The detailed audit covers 30 project records from seven events, with team credits, observed mechanisms, and retrieval gaps. [Award-by-award audit](winners.md) · [Festive Hacks second place](https://x.com/WeMakeDevs/status/2126001571184116029) · [Cloud Native winners](https://www.wemakedevs.org/hackathons/cnh/projects) · [Agents of SigNoz winners](https://archive.wemakedevs.org/hackathons/signoz/projects)
