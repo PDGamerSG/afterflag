@@ -4,30 +4,49 @@ const cleanBase = (value) => String(value).replace(/\/+$/, '');
 const sha256 = (value) => createHash('sha256').update(value).digest('hex');
 
 async function request(baseUrl, path, options = {}) {
-  const { method = 'GET', token, environmentKey, body } = options;
+  const { method = 'GET', token, environmentKey, body, timeoutMs = 5000 } = options;
   const headers = { accept: 'application/json' };
   if (token) headers.authorization = 'Token ' + token;
   if (environmentKey) headers['x-environment-key'] = environmentKey;
   if (body !== undefined) headers['content-type'] = 'application/json';
-  const response = await fetch(cleanBase(baseUrl) + path, {
-    method,
-    headers,
-    body: body === undefined ? undefined : JSON.stringify(body)
-  });
-  const text = await response.text();
-  let value;
+  let response;
+  let text;
   try {
-    value = text ? JSON.parse(text) : null;
+    response = await fetch(cleanBase(baseUrl) + path, {
+      method,
+      headers,
+      redirect: 'error',
+      signal: AbortSignal.timeout(timeoutMs),
+      body: body === undefined ? undefined : JSON.stringify(body)
+    });
+    text = await response.text();
   } catch {
-    value = { raw: text };
+    throw new Error('Flagsmith ' + method + ' unavailable or request timed out.');
   }
   if (!response.ok) {
-    const error = new Error('Flagsmith ' + method + ' ' + path + ' returned ' + response.status);
+    const error = new Error('Flagsmith ' + method + ' returned HTTP ' + response.status + '.');
     error.status = response.status;
-    error.details = value;
     throw error;
   }
-  return value;
+  try {
+    return text ? JSON.parse(text) : null;
+  } catch {
+    throw new Error('Flagsmith returned invalid JSON.');
+  }
+}
+
+export function evaluatedFlag(flag, name) {
+  if ((flag?.feature?.name ?? flag?.feature_name) !== name ||
+      typeof flag.enabled !== 'boolean' || flag.is_default === true) {
+    throw new Error('Flagsmith did not return an explicit decision for ' + name + '.');
+  }
+  return {
+    name,
+    enabled: flag.enabled,
+    value: flag.feature_state_value ?? flag.value ?? null,
+    observedAt: new Date().toISOString(),
+    digest: sha256(JSON.stringify(flag))
+  };
 }
 
 export function createFlagsmithClient({
@@ -51,18 +70,7 @@ export function createFlagsmithClient({
       return request(baseUrl, '/api/v1/flags/?feature=' + encodeURIComponent(name), { environmentKey });
     },
     async decision(name) {
-      const flag = await this.feature(name);
-      const returnedName = flag?.feature?.name ?? flag?.feature_name;
-      if (!flag || flag.is_default || (returnedName && returnedName !== name)) {
-        throw new Error('Flagsmith did not return an explicit decision for ' + name);
-      }
-      return {
-        name,
-        enabled: Boolean(flag.enabled),
-        value: flag.feature_state_value?.string_value ?? flag.value ?? null,
-        observedAt: new Date().toISOString(),
-        digest: sha256(JSON.stringify(flag))
-      };
+      return evaluatedFlag(await this.feature(name), name);
     },
     async configureFeature({ projectId, name, defaultEnabled = false }) {
       return api('/api/v1/projects/' + projectId + '/features/', {

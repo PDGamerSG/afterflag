@@ -1,22 +1,33 @@
 {
   "name": "afterflag",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
-  "description": "Prove that queued work can survive a Flagsmith codec rollout before removing its decoder.",
-  "engines": { "node": ">=22.13" },
+  "description": "Release evidence for queued-message decoder migrations with self-hosted Flagsmith.",
+  "engines": {
+    "node": ">=22.13"
+  },
   "scripts": {
     "test": "node --test",
-    "demo": "node scripts/demo.mjs",
+    "demo": "node scripts/afterflag.mjs run",
     "site": "node scripts/site.mjs",
-    "view": "node scripts/serve.mjs"
+    "view": "node scripts/serve.mjs",
+    "demo:fixture": "node scripts/demo.mjs",
+    "integration": "node scripts/integration.mjs",
+    "afterflag": "node scripts/afterflag.mjs",
+    "benchmark": "node scripts/benchmark.mjs"
   },
   "exports": {
     "./ledger": "./src/ledger.mjs",
     "./worker": "./src/worker.mjs",
     "./retirement": "./src/retirement.mjs",
     "./flagsmith": "./src/flagsmith.mjs",
-    "./rehearsal": "./src/rehearsal.mjs"
+    "./rehearsal": "./src/rehearsal.mjs",
+    "./evidence": "./src/release/evidence.mjs",
+    "./queue": "./src/release/queue.mjs"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "pg": "8.23.1"
+  }
 }

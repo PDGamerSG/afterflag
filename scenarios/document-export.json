@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "id": "document-export",
+  "title": "Document exports",
+  "flags": { "codec": "afterflag_export_v2", "hold": "afterflag_export_hold" },
+  "codecs": { "old": "v1", "new": "v2" },
+  "artifacts": {
+    "producer": "document/producer.mjs",
+    "bridge": "document/bridge.mjs",
+    "candidate": "document/candidate.mjs"
+  },
+  "specimens": {
+    "retained": {
+      "id": "export-031",
+      "delayMs": 120000,
+      "payload": { "title": "Migration guide", "body": "This export was queued under V1." },
+      "expectedArtifact": "Migration guide\nThis export was queued under V1.\n"
+    },
+    "replacement": {
+      "id": "export-032",
+      "payload": { "title": "Launch notes", "body": "This export was queued under V2." },
+      "expectedArtifact": "Launch notes\nThis export was queued under V2.\n"
+    }
+  },
+  "replay": ["pending", "held", "retry", "claimed", "dead"]
+}

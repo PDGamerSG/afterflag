@@ -1,21 +1,64 @@
-name: verify
+name: Release proof
 
 on:
   push:
   pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
-  test:
+  proof:
     runs-on: ubuntu-latest
+    timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - run: npm test
-      - run: npm run demo
-      - run: npm run site
-      - uses: actions/upload-artifact@v4
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit
+      - run: npm audit --omit=dev --audit-level=high
+      - name: Exercise actual Flagsmith and PostgreSQL
+        run: npm run integration
+      - name: Recompute the ready and blocked verdicts
+        run: |
+          npm run afterflag -- verify --require-live --manifest scenarios/document-export.json --source "$GITHUB_SHA"
+          status=0
+          npm run afterflag -- verify --require-live --manifest scenarios/document-export.json --source "$GITHUB_SHA" --report artifacts/blocked-report.json || status=$?
+          test "$status" -eq 1
+          npm run afterflag -- verify --require-live --manifest scenarios/webhook-delivery.json --source "$GITHUB_SHA" --report artifacts/webhook-report.json
+      - name: Package the evidence viewer
+        run: |
+          npm run site
+          AFTERFLAG_REPORT=artifacts/blocked-report.json AFTERFLAG_SITE=site/blocked npm run site
+          AFTERFLAG_REPORT=artifacts/webhook-report.json AFTERFLAG_SITE=site/webhook npm run site
+      - name: Upload release evidence
+        if: always()
+        uses: actions/upload-artifact@v4
         with:
-          name: afterflag-evidence
-          path: artifacts/afterflag-report.json
+          name: afterflag-release-evidence
+          path: artifacts/*report.json
+      - name: Upload site
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  pages:
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    needs: proof
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    concurrency:
+      group: github-pages
+      cancel-in-progress: false
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

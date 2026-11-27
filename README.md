@@ -1,59 +1,60 @@
 # Afterflag
 
-**Prove a queued release is safe before you retire its decoder.**
+**Prove that a queued worker can retire its old decoder.**
 
-Afterflag is a small, reusable Track 03 tool for the Flagsmith Experimentation Hackathon. It runs a release rehearsal against a disposable self-hosted Flagsmith instance. The producer flag changes from document codec V1 to V2 while a V1 export waits. Afterflag proves the failure a V2-only worker would see, fences new V1 admissions, honors a separate live hold, drains the old message, verifies a V2 export, and checks that a completed V1 redelivery creates no second effect.
+An empty ready queue can conceal delayed, held, retryable, claimed, or dead-letter work. Afterflag runs the actual candidate worker against retained bytes, verifies a version-specific producer fence and drain, and records the resulting release decision in Flagsmith.
 
-The verdict is scoped to the declared SQLite ledger and document-export adapter. It does not claim that a production queue is globally stopped. The live hold has a read-to-commit race that remains a deployment boundary.
+[Document export proof](https://pdgamersg.github.io/afterflag/) · [Blocked release](https://pdgamersg.github.io/afterflag/blocked/) · [Webhook contract](https://pdgamersg.github.io/afterflag/webhook/) · [1:57 demo](https://github.com/PDGamerSG/afterflag/releases/download/v0.2.0/afterflag-demo.mp4) · [Contract guide](docs/contracts.md)
 
-## Run the proof
+## Run it
 
-Node 22.13+ is required. The fixture run needs no cloud account or package install.
+Requires Node.js 22.13 or later, npm, and Docker with Compose. First run pulls pinned Flagsmith and PostgreSQL images and lets the Flagsmith database migrate.
 
-    npm test
-    npm run demo
-    npm run site
-    npm run view
+~~~sh
+./demo
+npm run site
+npm run view
+~~~
 
-Open http://127.0.0.1:4173 after the viewer starts. The generated report is artifacts/afterflag-report.json.
+The demo provisions an isolated Flagsmith and PostgreSQL lab, writes `artifacts/release-report.json`, and removes its own containers and volumes. The local evidence viewer runs at http://127.0.0.1:4173. Every run has fresh database and Flagsmith scopes.
 
-The fixture run uses the same worker, ledger and adapter as the live integration. It is useful for a quick review, but the hackathon evidence should use the pinned self-hosted Flagsmith run.
+~~~sh
+# See the selected contract and fingerprints.
+npm run afterflag -- plan
 
-## Live self-hosted Flagsmith
+# Stop at the pre-drain gate to obtain a real BLOCKED report, exit 1.
+npm run demo -- --before-drain --report artifacts/blocked-report.json
 
-The pinned stack is Flagsmith 2.295.2 at digest sha256:48905c664152d8ae2c843ec9cee72ff197e7caff6e91b959bb851a235915ea35, with PostgreSQL and Experimentation enabled. The compose file binds the API to 127.0.0.1:18000. A disposable admin token and environment key stay in the shell environment and never enter the report.
+# Reuse the runner with a different format migration.
+npm run demo -- --manifest scenarios/webhook-delivery.json --report artifacts/webhook-report.json
 
-    docker compose -p afterflag-flagsmith -f infra/flagsmith.compose.yml up -d
-    export FLAGSMITH_ADMIN_TOKEN='token from the disposable local instance'
-    export FLAGSMITH_ENVIRONMENT_KEY='development environment key'
-    export FLAGSMITH_PROJECT_ID='numeric project id'
-    npm run demo
+# Independently verify the evidence and the local contract's fingerprints.
+npm run afterflag -- verify --require-live --manifest scenarios/document-export.json
+~~~
 
-The live run creates or reuses afterflag_codec_v2 and afterflag_hold, resets them, and proves every transition by reading the evaluated Flagsmith API response after each write. A missing flag, default fallback, malformed response, network error or provider timeout fails closed and returns exit code 2.
+The CLI returns **0 Ready**, **1 Blocked**, and **2 Incomplete or invalid evidence**.
 
-Create the first local admin through the dashboard or the documented bootstrap API. This project never stores that token. The official guide is linked in docs/research.md.
+## What the release gate observes
 
-## Adapt it to a real queue
+1. **Admit old work.** A V1 document is persisted before the rollout. Self-hosted Flagsmith switches the pilot cohort to V2 and then promotes the stable cohort.
+2. **Fence and observe the counterexample.** A durable per-codec fence rejects a producer using the captured V1 decision. PostgreSQL sees zero ready jobs and one unresolved V1 job. A V2-only process hashes the stored bytes and rejects the codec. The Flagsmith Feature Health webhook records the blocker, and Afterflag reads it back.
+3. **Hold and drain.** The live hold flag preserves the old job with zero effects. A newly launched bridge process commits the intended artifact after hold is released.
+4. **Challenge the transition.** A replay lane exercises delayed, held, retryable, claimed, and redrivable jobs. A stale lease loses its ability to settle the job even after reassignment.
+5. **Verify the candidate.** The same V2-only artifact commits the expected V2 output. It returns the original receipt on redelivery. PostgreSQL validates the fence and drains before recording retirement. Flagsmith records the healthy result.
 
-The reusable boundary is src/rehearsal.mjs. Keep these invariants in the adapter.
+GitHub Actions runs the same live checks and publishes only the verified run to Pages. The review scope is the declared queue and its transactional effect ledger. A fresh hold read leaves a window for work that has already passed that read.
 
-1. The producer stores the codec and payload digest in the job in the same transaction as admission.
-2. A fenced codec rejects new jobs from stale producers, while same-intent retries return the original receipt.
-3. The worker reads the emergency hold immediately before the effect commit. Provider failure holds work.
-4. The effect intent and job completion use a unique job and effect key.
-5. Retirement counts delayed, held, claimed and retryable rows in the same durable ledger.
+## Reuse and verification
 
-The included SQLite ledger is a one-host proof adapter. A multi-host adapter should use PostgreSQL row locks or an equivalent lease and a sink-side idempotency key. Measure throughput and provider reads separately before making scale claims.
+Copy a manifest and provide a producer, a bridge worker and a candidate worker as trusted local modules. The [contract guide](docs/contracts.md) includes the exact input/output contract, a CI integration, evidence signing, and the transport boundary.
 
-## Hackathon submission
+- `npm test` runs local unit and SQLite regression tests. PostgreSQL and Flagsmith tests use the integration command.
+- `npm run integration` runs ready, blocked, and alternate live proofs plus concurrent queue regressions.
+- `npm run benchmark` runs six PostgreSQL workloads at 1,000 and 10,000 jobs with 1, 4, and 8 independent workers.
+- `npm run demo:fixture` produces the historical SQLite demo without containers. The viewer labels it as a fixture.
 
-Submit this public repository, an under-three-minute YouTube or Loom video, and the live demo URL if available. Track 03 asks what runs locally, what the reusable extension is, and how another developer uses it. The official deadline is November 29, 2026 at 8:00 PM IST.
+The benchmark committed 33,000 effects and checked 3,300 redeliveries with zero duplicate effects. The 10,000-job runs measured about 169, 518, and 577 jobs/s on one Apple M1 Max host at 1, 4, and 8 workers. These are synthetic workloads with a fixed hold-off response. [Benchmark runner](scripts/benchmark.mjs)
 
-- Toggle Wars overview: https://www.wemakedevs.org/hackathons/flagsmith
-- Rules: https://www.wemakedevs.org/hackathons/flagsmith/rules
-- Track judging: https://www.wemakedevs.org/hackathons/flagsmith#judging
-- Research and pre-build review: docs/research.md and docs/review.md
+## Toggle Wars
 
-## License
-
-MIT
+Track 03, Build on Open Source Flagsmith. [Research](docs/research-iteration.md) · [Review](docs/review.md) · [Submission sheet](docs/submission.md) · [MIT license](LICENSE)
