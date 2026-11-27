@@ -16,5 +16,5 @@ runs:
         PROOF_MANIFEST: ${{ inputs.manifest }}
         PROOF_REPORT: ${{ inputs.report }}
       run: |
-        npm ci --prefix "$TOOL_ROOT" --ignore-scripts --no-audit --no-fund
+        (cd "$TOOL_ROOT" && npm ci --ignore-scripts --no-audit --no-fund)
         node "$TOOL_ROOT/scripts/afterflag.mjs" run --manifest "$PROOF_MANIFEST" --report "$PROOF_REPORT"
