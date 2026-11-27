@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import test from 'node:test';
+import { setTimeout as pause } from 'node:timers/promises';
 import { openQueue, initQueue, digest } from '../../src/release/queue.mjs';
 
 const url = process.env.AFTERFLAG_TEST_DB;
@@ -17,6 +18,41 @@ const fixture = (id = 'legacy', codec = 'v1', availableAt = 0) => ({
   id, codec, availableAt, bytes: Buffer.from('old bytes'),
   expectedDigest: digest('document output')
 });
+
+async function databaseTime(client) {
+  const { rows: [row] } = await client.query('SELECT floor(extract(epoch FROM clock_timestamp()) * 1000) AS now');
+  return Number(row.now);
+}
+
+async function withRowContention(q, id, action, holdLock) {
+  const locker = await q.pool.connect();
+  let operation;
+  let lockedThrough;
+  try {
+    await locker.query('BEGIN');
+    await locker.query('SELECT 1 FROM afterflag_jobs WHERE scope = $1 AND id = $2 FOR UPDATE', [q.scope, id]);
+    const { rows: [{ pid }] } = await locker.query('SELECT pg_backend_pid() AS pid');
+    operation = action();
+    operation.catch(() => {});
+    const deadline = Date.now() + 3_000;
+    let waiting = false;
+    while (Date.now() < deadline && !waiting) {
+      const { rows: [row] } = await locker.query(`
+        SELECT EXISTS (
+          SELECT 1 FROM pg_locks WHERE NOT granted AND $1 = ANY(pg_blocking_pids(pid))
+        ) AS waiting
+      `, [pid]);
+      waiting = row.waiting;
+      if (!waiting) await pause(10);
+    }
+    assert.ok(waiting, 'PostgreSQL must observe the operation waiting for the test transaction');
+    await holdLock(await databaseTime(locker));
+    lockedThrough = await databaseTime(locker);
+  } finally {
+    await locker.query('ROLLBACK').finally(() => locker.release());
+  }
+  return { result: await operation, lockedThrough };
+}
 
 exercise('a fenced codec counts delayed, held, retry, claimed and dead work', async (q) => {
   await q.enqueue(fixture('delayed', 'v1', 1000));
@@ -58,6 +94,38 @@ exercise('an expired claimant cannot settle a reissued lease', async (q) => {
   assert.equal(replay.status, 'duplicate');
   assert.deepEqual(replay.receipt, done.receipt);
   assert.equal(await q.effectCount(), 1);
+});
+
+for (const [name, settle] of [
+  ['completion', (q, id, token) => q.complete(id, token, 'document output')],
+  ['defer', (q, id, token) => q.defer(id, token, 'retry')]
+]) {
+  exercise(`${name} loses a lease that expires while waiting for a row lock`, async (q) => {
+    const id = 'contended';
+    const leaseMs = 1_500;
+    await q.enqueue(fixture(id));
+    const now = await databaseTime(q.pool);
+    const claim = await q.claim({ id, now, leaseMs });
+    const leaseUntil = now + leaseMs;
+    const { result, lockedThrough } = await withRowContention(q, id, () => settle(q, id, claim.token), (waitingAt) => {
+      assert.ok(waitingAt < leaseUntil, 'The operation must enter the lock wait with an active lease');
+      return pause(leaseUntil - waitingAt + 20);
+    });
+    assert.ok(lockedThrough >= leaseUntil);
+    assert.equal(result.status, 'lease-lost');
+    assert.equal(await q.effectCount(), 0);
+    assert.equal((await q.claim({ id })).attempt, 2);
+  });
+}
+
+exercise('a named claimant gets its full lease after acquiring a contended row', async (q) => {
+  const id = 'contended';
+  const leaseMs = 2_000;
+  await q.enqueue(fixture(id));
+  const { result, lockedThrough } = await withRowContention(q, id, () => q.claim({ id, leaseMs }), () => pause(100));
+  assert.equal(result.status, 'claimed');
+  const { rows: [row] } = await q.pool.query('SELECT lease_until FROM afterflag_jobs WHERE scope = $1 AND id = $2', [q.scope, id]);
+  assert.ok(Number(row.lease_until) >= lockedThrough + leaseMs);
 });
 
 exercise('concurrent admission and out-of-order fence leave exact backlog', async (q) => {

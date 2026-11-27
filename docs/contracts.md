@@ -27,7 +27,7 @@ Use a Node 22 runner with Docker Compose and a checked-out trusted consumer repo
 - uses: actions/setup-node@v4
   with:
     node-version: 22
-- uses: PDGamerSG/afterflag/.github/actions/release-proof@v0.2.0
+- uses: PDGamerSG/afterflag/.github/actions/release-proof@4444ba94e8e363072adf9e062d89f02b863f3f09
   with:
     manifest: release/document-export.json
     report: artifacts/release-report.json
@@ -53,6 +53,6 @@ npm run afterflag -- verify --require-live --public-key /path/to/public.pem
 
 ## Queue and deployment contract
 
-Afterflag’s PostgreSQL queue replaces the broker for the supplied integration. Use a scope per contract and rehearsal. The admission fence and final backlog read share the same transactional boundary. `SKIP LOCKED` distributes ready jobs to workers. The retirement query counts all unresolved old rows, including dead jobs, without skipping locks. No effect can be committed without the active lease.
+Afterflag’s PostgreSQL queue replaces the broker for the supplied integration. Use a scope per contract and rehearsal. The admission fence and final backlog read share the same transactional boundary. `SKIP LOCKED` distributes ready jobs to workers. The retirement query counts all unresolved old rows, including dead jobs, without skipping locks. Workers check lease ownership after acquiring the row lock. Each delivery hashes the stored payload bytes before deciding whether to decode or replay a receipt. A digest mismatch on an uncommitted job moves it to the dead-letter state.
 
 External producers, brokers, replay archives, or a separate effect sink need their own authoritative adapter with equivalent fencing and idempotency. An approximate broker count cannot establish the same proof. Compatibility between app versions and formats depends on the specimens and artifacts you supply. Use the archived JSON and pinned CI source to inspect the exact evidence behind a decision.

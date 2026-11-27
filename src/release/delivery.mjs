@@ -1,6 +1,7 @@
 import { execFile } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
+import { digest } from './queue.mjs';
 
 const workerEntry = fileURLToPath(new URL('../../scripts/release-worker.mjs', import.meta.url));
 const exec = promisify(execFile);
@@ -9,17 +10,23 @@ export async function deliver({ queue, decoders, build, id, now, readHold }) {
   const claim = await queue.claim({ id, now });
   const codecs = Object.keys(decoders).sort();
   const worker = { build, codecs, process: process.pid };
-  if (claim.status === 'duplicate') {
-    return { ...worker, status: 'duplicate', job: claim.job, receipt: claim.receipt };
-  }
-  if (claim.status !== 'claimed') return { ...worker, ...claim };
+  if (claim.status !== 'claimed' && claim.status !== 'duplicate') return { ...worker, ...claim };
 
   const { bytes, ...job } = claim.job;
-  const result = { ...worker, job, attempt: claim.attempt };
+  const inputDigestObserved = digest(bytes);
+  const matchesInput = job.inputDigest === inputDigestObserved;
+  const observed = { ...worker, job, inputDigestObserved };
+  if (claim.status === 'duplicate') {
+    return matchesInput ? { ...observed, status: 'duplicate', receipt: claim.receipt }
+      : { ...observed, status: 'input-mismatch', reason: 'input-digest-mismatch' };
+  }
+
+  const result = { ...observed, attempt: claim.attempt };
   async function defer(state, reason, status, hold = null) {
     const deferred = await queue.defer(job.id, claim.token, state, { now, reason });
     return { ...result, status: deferred.status === 'lease-lost' ? 'lease-lost' : status, reason, hold };
   }
+  if (!matchesInput) return defer('dead', 'input-digest-mismatch', 'input-mismatch');
   const decode = Object.hasOwn(decoders, job.codec) ? decoders[job.codec] : undefined;
   if (typeof decode !== 'function') return defer('retry', 'missing-decoder', 'unsupported-codec');
   let artifact;

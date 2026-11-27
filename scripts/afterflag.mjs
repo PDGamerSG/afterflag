@@ -114,7 +114,7 @@ async function main() {
     const id = randomUUID();
     const evidence = createEvidence({ id, metadata: releaseMetadata(plan, source, id) });
     evidence.add('error', { message: error.message.slice(0, 240) });
-    report = evidence.finish();
+    report = evidence.finish(privatePem);
     console.error(error.message);
   } finally {
     if (lab) await lab.close().catch((error) => console.error(error.message));

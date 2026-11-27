@@ -47,6 +47,8 @@ export function evaluate(report) {
     providerOkay(decision, m.flags?.codec, codec === modern) && decision.codec === codec && decision.ring === ring;
   const sameJob = (actual, expected) => Boolean(expected && actual?.id === expected.id &&
     actual?.codec === expected.codec && actual?.inputDigest === expected.inputDigest && hex(expected.inputDigest));
+  const observedJob = (worker, expected) =>
+    sameJob(worker?.job, expected) && worker.inputDigestObserved === expected.inputDigest;
   const candidateBuild = (worker) => worker?.build === m.builds?.candidate &&
     worker?.codecs?.length === 1 && worker.codecs[0] === modern &&
     Number.isSafeInteger(worker.process) && worker.process > 0;
@@ -82,18 +84,18 @@ export function evaluate(report) {
       result.snapshot?.blocking?.some((item) => sameJob(item, legacy)) &&
       result.gate?.status === 'blocked' && result.gate?.reason === 'pending-work' &&
       candidateBuild(result.candidate) && result.candidate.status === 'unsupported-codec' &&
-      sameJob(result.candidate.job, legacy) && result.effects === 0);
+      observedJob(result.candidate, legacy) && result.effects === 0);
   add('blocked-health', 'Flagsmith recorded the blocked release',
     ['blocker', 'health-blocked'], (_, result) => health(result, 'UNHEALTHY'));
   add('hold', 'A live hold preserves the job with zero effects',
     ['health-blocked', 'hold'], (_, result) =>
       result.worker?.status === 'held' && result.worker.reason === 'hold-enabled' &&
-      providerOkay(result.worker.hold, m.flags?.hold, true) && sameJob(result.worker.job, legacy) &&
+      providerOkay(result.worker.hold, m.flags?.hold, true) && observedJob(result.worker, legacy) &&
       result.effects === 0 && result.snapshot?.counts?.held === 1);
   add('bridge', 'A new bridge process commits the original artifact after resume',
     ['hold', 'drained'], (held, result) =>
       result.worker?.status === 'committed' && result.worker.build === m.builds?.bridge &&
-      result.worker.process !== held.worker?.process && sameJob(result.worker.job, legacy) &&
+      result.worker.process !== held.worker?.process && observedJob(result.worker, legacy) &&
       providerOkay(result.worker.hold, m.flags?.hold, false) && result.snapshot?.pending === 0 &&
       result.effects === 1 && sameReceipt(result.worker.receipt, result.receipt) &&
       result.receipt.artifactDigest === m.specimens?.retained?.artifactDigest);
@@ -113,14 +115,16 @@ export function evaluate(report) {
       admitted.decision.digest === rollout?.stable?.digest &&
       admitted.job?.decisionDigest === admitted.decision.digest &&
       candidateBuild(result.worker) && result.worker.build === negative?.candidate?.build &&
-      sameJob(result.worker.job, replacement) && result.worker.status === 'committed' &&
+      observedJob(result.worker, replacement) &&
+      result.worker.status === 'committed' &&
       providerOkay(result.worker.hold, m.flags?.hold, false) &&
       sameReceipt(result.worker.receipt, result.receipt) &&
       result.receipt.artifactDigest === m.specimens?.replacement?.artifactDigest);
   add('redelivery', 'The candidate returns the original receipt on old redelivery',
     ['candidate', 'redelivery'], (_, result) =>
       candidateBuild(result.worker) && result.worker.status === 'duplicate' &&
-      sameJob(result.worker.job, legacy) && sameReceipt(result.worker.receipt, drained?.receipt) &&
+      observedJob(result.worker, legacy) &&
+      sameReceipt(result.worker.receipt, drained?.receipt) &&
       sameReceipt(result.receipt, drained?.receipt) && result.effects === 2);
   add('retirement', 'The durable fence and zero outstanding old jobs authorize removal',
     ['redelivery', 'retired'], (_, result) =>
@@ -128,6 +132,7 @@ export function evaluate(report) {
       result.snapshot.pending === 0 && result.snapshot.generation === fence?.generation &&
       result.rejected?.status === 'fenced' && result.rejected.generation === fence?.generation &&
       candidateBuild(result.replay) && result.replay.status === 'duplicate' &&
+      observedJob(result.replay, legacy) &&
       sameReceipt(result.replay.receipt, drained?.receipt) && result.effects === 2);
   add('ready-health', 'Flagsmith recorded the verified release',
     ['retired', 'health-ready'], (_, result) => health(result, 'HEALTHY') &&

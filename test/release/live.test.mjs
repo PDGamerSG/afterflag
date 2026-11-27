@@ -5,7 +5,7 @@ import test from 'node:test';
 import { bootstrapFlagsmith } from '../../src/release/policy.mjs';
 import { loadManifest } from '../../src/release/manifest.mjs';
 import { rehearse } from '../../src/release/rehearse.mjs';
-import { createEvidence, verifyEvidence } from '../../src/release/evidence.mjs';
+import { createEvidence, evaluate, verifyEvidence } from '../../src/release/evidence.mjs';
 
 const databaseUrl = process.env.AFTERFLAG_TEST_DB;
 const flagsmithUrl = process.env.AFTERFLAG_TEST_FLAGSMITH;
@@ -40,6 +40,9 @@ test('real Flagsmith and PostgreSQL produce a ready proof, blocked proof and alt
       report.events.find((event) => event.kind === 'legacy-admitted').data.job.inputDigest);
     if (verdict === 'ready') {
       assert.ok(computed.checks.every((check) => check.status === 'pass'));
+      const missingDigest = structuredClone(report);
+      delete missingDigest.events.find((event) => event.kind === 'retired').data.replay.inputDigestObserved;
+      assert.equal(evaluate(missingDigest).checks.find((check) => check.id === 'retirement').status, 'fail');
       const rebuilt = createEvidence({ id: report.id, metadata: report.metadata });
       for (const { kind, data } of report.events) {
         const changed = structuredClone(data);

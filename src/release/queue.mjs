@@ -60,6 +60,8 @@ const dispatchable = `(
   status = 'claimed' AND lease_until <= $2
 )`;
 const finiteTime = (time) => Number.isSafeInteger(time) && time >= 0;
+const ownsLease = (row, token, now) =>
+  row?.status === 'claimed' && row.lease_token === token && Number(row.lease_until) > now;
 
 function jobView(row) {
   return {
@@ -99,6 +101,14 @@ export function openQueue(connectionString, scope, { connections = 12 } = {}) {
     connectionString, max: connections, connectionTimeoutMillis: 5000,
     statement_timeout: 10000, application_name: 'afterflag'
   });
+
+  async function lockLease(client, id) {
+    const { rows } = await client.query(
+      'SELECT status, lease_token, lease_until, expected_digest FROM afterflag_jobs ' +
+      'WHERE scope = $1 AND id = $2 FOR UPDATE', [scope, id]
+    );
+    return rows[0];
+  }
 
   async function readReceipt(client, id) {
     const { rows } = await client.query(`
@@ -196,14 +206,14 @@ export function openQueue(connectionString, scope, { connections = 12 } = {}) {
     claim({ id, now: requestedNow, leaseMs = 30000 } = {}) {
       if (!finiteTime(leaseMs) || leaseMs === 0) throw new TypeError('Lease duration must be positive.');
       return transaction(pool, async (client) => {
-        const now = await timeAt(client, requestedNow);
         let row;
         if (id === undefined) {
+          const scanTime = await timeAt(client, requestedNow);
           ({ rows: [row] } = await client.query(`
             SELECT * FROM afterflag_jobs WHERE scope = $1
               AND status NOT IN ('dead','committed') AND ${dispatchable}
             ORDER BY available_at, id LIMIT 1 FOR UPDATE SKIP LOCKED
-          `, [scope, now]));
+          `, [scope, scanTime]));
           if (!row) return { status: 'empty' };
           id = row.id;
         } else {
@@ -212,13 +222,19 @@ export function openQueue(connectionString, scope, { connections = 12 } = {}) {
           ));
           if (!row) return { status: 'missing', id };
           if (row.status === 'committed') {
-            return { status: 'duplicate', job: jobView(row), receipt: await readReceipt(client, id) };
+            return {
+              status: 'duplicate',
+              job: { ...jobView(row), bytes: row.bytes },
+              receipt: await readReceipt(client, id)
+            };
           }
           if (row.status === 'dead') return { status: 'dead', id };
-          if (row.available_at > now) return { status: 'delayed', id, availableAt: Number(row.available_at) };
-          if (row.status === 'claimed' && row.lease_until > now) return { status: 'unavailable', id };
         }
 
+        // A named claim may wait on an owner. Start the lease after acquiring the row.
+        const now = await timeAt(client, requestedNow);
+        if (row.available_at > now) return { status: 'delayed', id, availableAt: Number(row.available_at) };
+        if (row.status === 'claimed' && row.lease_until > now) return { status: 'unavailable', id };
         const token = randomUUID();
         await client.query(`
           UPDATE afterflag_jobs
@@ -234,13 +250,14 @@ export function openQueue(connectionString, scope, { connections = 12 } = {}) {
     defer(id, token, status, { now: requestedNow, availableAt, reason = null } = {}) {
       if (!['pending', 'held', 'retry', 'dead'].includes(status)) throw new TypeError('Invalid unresolved state.');
       return transaction(pool, async (client) => {
+        const row = await lockLease(client, id);
         const now = await timeAt(client, requestedNow);
-        const { rowCount } = await client.query(`
-          UPDATE afterflag_jobs SET status = $5, available_at = COALESCE($6, available_at),
-            reason = $7, lease_token = NULL, lease_until = NULL
-          WHERE scope = $1 AND id = $2 AND lease_token = $3 AND lease_until > $4
-        `, [scope, id, token, now, status, availableAt ?? null, reason]);
-        return { status: rowCount === 1 ? status : 'lease-lost', id };
+        if (!ownsLease(row, token, now)) return { status: 'lease-lost', id };
+        await client.query(`
+          UPDATE afterflag_jobs SET status = $3, available_at = COALESCE($4, available_at),
+            reason = $5, lease_token = NULL, lease_until = NULL WHERE scope = $1 AND id = $2
+        `, [scope, id, status, availableAt ?? null, reason]);
+        return { status, id };
       });
     },
     async redrive(id, requestedNow) {
@@ -252,15 +269,12 @@ export function openQueue(connectionString, scope, { connections = 12 } = {}) {
       return rows[0] ? { status: 'redriven', job: jobView(rows[0]) } : { status: 'not-dead', id };
     },
     complete(id, token, artifact, requestedNow) {
+      const bytes = Buffer.from(artifact);
+      const artifactDigest = digest(bytes);
       return transaction(pool, async (client) => {
+        const row = await lockLease(client, id);
         const now = await timeAt(client, requestedNow);
-        const { rows: [row] } = await client.query(`
-          SELECT expected_digest FROM afterflag_jobs
-          WHERE scope = $1 AND id = $2 AND lease_token = $3 AND lease_until > $4 FOR UPDATE
-        `, [scope, id, token, now]);
-        if (!row) return { status: 'lease-lost', id };
-        const bytes = Buffer.from(artifact);
-        const artifactDigest = digest(bytes);
+        if (!ownsLease(row, token, now)) return { status: 'lease-lost', id };
         if (row.expected_digest !== artifactDigest) return { status: 'artifact-mismatch', id };
         const receiptId = digest(JSON.stringify([scope, id, artifactDigest]));
         await client.query(`

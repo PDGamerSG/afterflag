@@ -369,7 +369,7 @@ function blockingJobs(snapshot) {
 function highlights(event) {
   const data = fields(event.data);
   const worker = fields(data.candidate ?? data.worker ?? data.replay);
-  const receipt = fields(data.receipt);
+  const receipt = fields(data.receipt ?? worker.receipt);
   const gate = fields(data.gate);
   const job = fields(data.job ?? worker.job);
   const provider = fields(data.provider);
@@ -396,16 +396,19 @@ function highlights(event) {
     ['Installed codecs', installed],
     ['Worker build', worker.build],
     ['Input digest', job.inputDigest ?? worker.inputDigest ?? data.inputDigest],
+    ['Worker-read digest', worker.inputDigestObserved],
     ['Receipt', receipt.id ?? receipt.jobId],
     ['Artifact digest', receipt.artifactDigest],
     ['Effects', data.effects],
     ['Feature Health', data.type],
+    ['Health event ID', data.type ? data.id : undefined],
     ['Flagsmith', provider.version],
     ['Environment', provider.environmentId ?? data.environmentId],
     ['Rehearsal error', data.message]
   ].filter(([, value]) => scalar(value)).map(([key, value]) => {
     const html = valueHtml(value);
-    return [key, ['Worker build', 'Input digest', 'Receipt', 'Artifact digest'].includes(key) ? `<code>${html}</code>` : html];
+    return [key, ['Worker build', 'Input digest', 'Worker-read digest', 'Receipt', 'Artifact digest'].includes(key)
+      ? `<code>${html}</code>` : html];
   });
   const observedTimes = [
     ['Queue sample', data.snapshotAt],
