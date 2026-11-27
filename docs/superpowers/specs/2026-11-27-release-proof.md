@@ -4,7 +4,7 @@
 
 A release engineer needs to decide whether a candidate deployment can remove a message decoder. A versioned manifest describes a transition, two worker artifacts, and the queue paths it covers. Afterflag changes live Flagsmith policy in a disposable environment, then uses real persisted jobs and the candidate executable to challenge and verify that transition. The CLI can emit a deployment verdict, and engineers can open the exact job that explains it.
 
-The release proof follows V1 document bytes admitted before rollout. A Flagsmith pilot recognizes V2 while the stable producer still selects V1. Promotion moves stable traffic to V2. The ready queue can be empty while delayed V1 remains. The V2-only candidate sees those same bytes and rejects them. Stale V1 admission is then fenced. A bridge honors a live hold, drains V1 after relaunch, and the original candidate commits a V2 artifact and returns the already-written V1 receipt on redelivery. A V1 job that is claimed, retryable, or redrivable must block the same gate. Rehearsals change only disposable demo control planes. No production changes are automated.
+The release proof follows V1 document bytes admitted before rollout. A Flagsmith pilot recognizes V2 while the stable producer still selects V1. Promotion moves stable traffic to V2. Afterflag fences stale V1 admission and finds a delayed V1 job in a queue with zero ready jobs. The V2-only candidate reads those same bytes and rejects the codec. A bridge honors a live hold, drains V1 after relaunch, and the original candidate commits a V2 artifact and returns the already-written V1 receipt on redelivery. A V1 job that is claimed, retryable, or redrivable must block the same gate. Rehearsals use disposable control planes.
 
 ## Boundaries
 

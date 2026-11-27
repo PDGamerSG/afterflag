@@ -37,8 +37,8 @@ The CLI returns **0 Ready**, **1 Blocked**, and **2 Incomplete or invalid eviden
 ## What the release gate observes
 
 1. **Admit old work.** A V1 document is persisted before the rollout. Self-hosted Flagsmith switches the pilot cohort to V2 and then promotes the stable cohort.
-2. **Observe the counterexample.** PostgreSQL sees zero ready jobs but one unresolved V1 job. A V2-only process cannot decode its stored bytes. The Flagsmith Feature Health webhook records the blocker, and Afterflag checks that it arrived.
-3. **Fence and drain.** A durable per-codec fence rejects a producer using the captured V1 decision. The live hold flag preserves the old job with zero effects. A new bridge process commits the intended artifact after hold is released.
+2. **Fence and observe the counterexample.** A durable per-codec fence rejects a producer using the captured V1 decision. PostgreSQL sees zero ready jobs and one unresolved V1 job. A V2-only process hashes the stored bytes and rejects the codec. The Flagsmith Feature Health webhook records the blocker, and Afterflag reads it back.
+3. **Hold and drain.** The live hold flag preserves the old job with zero effects. A newly launched bridge process commits the intended artifact after hold is released.
 4. **Challenge the transition.** A replay lane exercises delayed, held, retryable, claimed, and redrivable jobs. A stale lease loses its ability to settle the job even after reassignment.
 5. **Verify the candidate.** The same V2-only artifact commits the expected V2 output. It returns the original receipt on redelivery. PostgreSQL validates the fence and drains before recording retirement. Flagsmith records the healthy result.
 
@@ -52,6 +52,8 @@ Copy a manifest and provide a producer, a bridge worker and a candidate worker a
 - `npm run integration` runs ready, blocked, and alternate live proofs plus concurrent queue regressions.
 - `npm run benchmark` runs six PostgreSQL workloads at 1,000 and 10,000 jobs with 1, 4, and 8 independent workers.
 - `npm run demo:fixture` produces the historical SQLite demo without containers. The viewer labels it as a fixture.
+
+The benchmark committed 33,000 effects and checked 3,300 redeliveries with zero duplicate effects. The 10,000-job runs measured about 169, 518, and 577 jobs/s on one Apple M1 Max host at 1, 4, and 8 workers. These are synthetic workloads with a fixed hold-off response. [Benchmark runner](scripts/benchmark.mjs)
 
 ## Toggle Wars
 

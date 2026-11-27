@@ -35,7 +35,7 @@ No exact public match for the scoped release check appeared in these sources. Se
 
 ## What past judging rewarded
 
-The closest verified Flagsmith award went to Insidious for running real feature changes during a self-hosted operational drill. Roloe and CapyKube had reproducible sponsor-linked performance improvements and DebugProof tested the same failure on two releases. The official outcomes support focusing on a demonstrable before-and-after result tied to the sponsor’s technology. They provide no reliable background-based predictor for winners. [Festive Hacks second place](https://x.com/WeMakeDevs/status/2126001571184116029) · [Cloud Native winners](https://www.wemakedevs.org/hackathons/cnh/projects) · [Agents of SigNoz winners](https://archive.wemakedevs.org/hackathons/signoz/projects)
+The closest verified Flagsmith award went to Insidious for running real feature changes during a self-hosted operational drill. Roloe and CapyKube reported sponsor-linked performance improvements and DebugProof tested the same failure on two releases. Public award records show that both solo developers and teams win. The detailed audit covers 30 project records from seven events, with team credits, observed mechanisms, and retrieval gaps. [Award-by-award audit](winners.md) · [Festive Hacks second place](https://x.com/WeMakeDevs/status/2126001571184116029) · [Cloud Native winners](https://www.wemakedevs.org/hackathons/cnh/projects) · [Agents of SigNoz winners](https://archive.wemakedevs.org/hackathons/signoz/projects)
 
 ## Directions scored by the research track
 

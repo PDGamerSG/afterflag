@@ -53,3 +53,13 @@ On November 27, Astra reviewed the published v0.1 commit `c487bc8` and independe
 | **Mean** | **8.70** | **9.375** |
 
 The revised architecture uses a real PostgreSQL queue and separate worker processes, manifests and semantic output checks, an offline evidence verifier, and native Feature Health read-back. The projected rating qualified this architecture for implementation. A fresh earned rating must use the working build and recorded demonstration. [Second-round research](research-iteration.md) · [Architecture](superpowers/specs/2026-11-27-release-proof.md)
+
+## First v0.2 implementation review
+
+Astra scored the implementation at commit `4444ba9` **6.90/10**. It gave 9.6 for Flagsmith, 8.8 for impact, 9.2 for creativity and 0 for the missing recording. Its independent PostgreSQL test showed that a worker could still complete or defer a job after its lease expired while waiting for a row lock. [Reviewed code](https://github.com/PDGamerSG/afterflag/tree/4444ba9) · [CI evidence](https://github.com/PDGamerSG/afterflag/actions/runs/45913784071)
+
+The follow-up samples the database clock after acquiring the row lock and checks the worker’s observed payload digest before decoding or replaying a receipt. Three contention regressions fail on the original queue and pass with the fix. The live suite passes 38 tests and the reusable action passes against a separate consumer checkout. The recorded demonstration follows the actual CLI output and evidence viewer for 1 minute 54 seconds. [Queue fix](https://github.com/PDGamerSG/afterflag/commit/35395eebee0a99f188e886f1513667dde1ffcc5e)
+
+## First recorded cut
+
+Astra scored commit `30c89d9` and the first recording **8.875/10**. It gave 9.5 for Flagsmith, 8.5 for impact, 9.0 for creativity and 8.5 for the video. It independently verified the four report verdicts and observed the PostgreSQL lock-wait tests pass. The requested improvements were a larger opening counterexample and a direct view of the matching Feature Health event in Flagsmith. The practice run uses synthetic workloads and the record contains no downstream production adoption. [Reviewed code](https://github.com/PDGamerSG/afterflag/tree/30c89d9)

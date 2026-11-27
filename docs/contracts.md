@@ -27,7 +27,7 @@ Use a Node 22 runner with Docker Compose and a checked-out trusted consumer repo
 - uses: actions/setup-node@v4
   with:
     node-version: 22
-- uses: PDGamerSG/afterflag/.github/actions/release-proof@4444ba94e8e363072adf9e062d89f02b863f3f09
+- uses: PDGamerSG/afterflag/.github/actions/release-proof@30c89d963059de6af13e5dbe2d5e3bfc4155933c
   with:
     manifest: release/document-export.json
     report: artifacts/release-report.json
